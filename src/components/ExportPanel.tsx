@@ -44,25 +44,14 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
     setLocalIsComplete(false);
 
     try {
-      // Simulate progress updates
-      const interval = setInterval(() => {
-        setLocalProgress((prev) => {
-          const newProgress = prev + 10;
-          if (newProgress >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 300);
-
       await onExport();
 
-      clearInterval(interval);
+      // Update progress based on parent component's progress
       setLocalProgress(100);
       setLocalIsComplete(true);
     } catch (error) {
       setLocalHasError(true);
+      console.error("Export error:", error);
     } finally {
       setLocalIsProcessing(false);
     }
@@ -72,8 +61,18 @@ const ExportPanel: React.FC<ExportPanelProps> = ({
     // In a real implementation, this would trigger the actual file download
     console.log(`Downloading ${fileName}`);
 
-    // Simulate download with an alert
-    alert(`Downloading ${fileName}`);
+    // Create a fake download link
+    const link = document.createElement("a");
+    link.href =
+      "data:application/pdf;base64,JVBERi0xLjcKJeLjz9MKNSAwIG9iago8PCAvVHlwZSAvUGFnZSAvUGFyZW50IDEgMCBSIC9MYXN0TW9kaWZpZWQgKEQ6MjAyMzAxMDEwMDAwMDArMDAnMDAnKSAvUmVzb3VyY2VzIDIgMCBSIC9NZWRpYUJveCBbMCAwIDU5NS4yNzU2IDg0MS44ODk4XSAvQ3JvcEJveCBbMCAwIDU5NS4yNzU2IDg0MS44ODk4XSAvQmxlZWRCb3ggWzAgMCA1OTUuMjc1NiA4NDEuODg5OF0gL1RyaW1Cb3ggWzAgMCA1OTUuMjc1NiA4NDEuODg5OF0gL0FydEJveCBbMCAwIDU5NS4yNzU2IDg0MS44ODk4XSAvQ29udGVudHMgNiAwIFIgL1JvdGF0ZSAwIC9Hcm91cCA8PCAvVHlwZSAvR3JvdXAgL1MgL1RyYW5zcGFyZW5jeSAvQ1MgL0RldmljZVJHQiA+PiAvQW5ub3RzIFsgNSAwIFIgXSAvUFogMSA+PgplbmRvYmoKNiAwIG9iago8PC9GaWx0ZXIgL0ZsYXRlRGVjb2RlIC9MZW5ndGggMTc0Pj4gc3RyZWFtCnicXY8xDoMwDEX3nMI3iNMEkBCLhYGBoXdoqtLSqkHq0Ns3JAVV8mC/b1n+tgMc4Lw9pxvMECEhTXHJa0wEEZKGFZLg1dZaNWMEK7PQHXr3DDOzYDSsGr5v7DJpVr3DG2ZFhLhgVo1qwk/ZjYayWrOyZGbRnJAqZvFf9Wj5UPO+1V5bm0tOEXLRzMWzYCFOzJWFCrkg/gDpWzxoCmVuZHN0cmVhbQplbmRvYmoKNyAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMSAwIFIgL09wZW5BY3Rpb24gWzMgMCBSIC9GaXRIIG51bGxdIC9QYWdlTGF5b3V0IC9PbmVDb2x1bW4gPj4KZW5kb2JqCjggMCBvYmoKPDwgL0NyZWF0b3IgKFJlYWRFYXN5IERvY3VtZW50IEVuaGFuY2VyKSAvQ3JlYXRpb25EYXRlIChEOjIwMjMwMTAxMDAwMDAwKzAwJzAwJykgL01vZERhdGUgKEQ6MjAyMzAxMDEwMDAwMDArMDAnMDAnKSA+PgplbmRvYmoKeHJlZgowIDkKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDAwIDAwMDAwIG4gCjAwMDAwMDAwMDAgMDAwMDAgbiAKMDAwMDAwMDAwMCAwMDAwMCBuIAowMDAwMDAwMDAwIDAwMDAwIG4gCjAwMDAwMDAwMDAgMDAwMDAgbiAKMDAwMDAwMDAwMCAwMDAwMCBuIAowMDAwMDAwMjQzIDAwMDAwIG4gCjAwMDAwMDAzNDYgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA5IC9Sb290IDcgMCBSIC9JbmZvIDggMCBSIC9JRCBbIDxjNGRmOTg4YTc1NjAyYWVmYjM3YWJkZmY5NWVhMGIwYT4gPGM0ZGY5ODhhNzU2MDJhZWZiMzdhYmRmZjk1ZWEwYjBhPiBdID4+CnN0YXJ0eHJlZgo0ODYKJSVFT0YK";
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show success message
+    const successMessage = `Successfully downloaded ${fileName}`;
+    console.log(successMessage);
   };
 
   return (

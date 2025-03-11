@@ -191,7 +191,16 @@ const ControlPanel = ({
         </div>
 
         {/* Apply Button */}
-        <Button className="w-full">Apply Changes</Button>
+        <Button
+          className="w-full"
+          onClick={() => {
+            onBoldingRuleChange(boldingRule);
+            onFontSizeChange(fontSize);
+            onSpacingChange(spacing);
+          }}
+        >
+          Apply Changes
+        </Button>
       </CardContent>
     </Card>
   );

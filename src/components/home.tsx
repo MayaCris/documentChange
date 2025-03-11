@@ -62,10 +62,25 @@ const Home = () => {
   const handleExport = async () => {
     setProcessingStatus("processing");
     setIsProcessing(true);
+    setProcessingProgress(0);
 
-    // Simulate export process
+    // Simulate export process with progress updates
+    const interval = setInterval(() => {
+      setProcessingProgress((prev) => {
+        const newProgress = prev + 10;
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return newProgress;
+      });
+    }, 200);
+
+    // Simulate processing time
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    clearInterval(interval);
+    setProcessingProgress(100);
     setIsProcessing(false);
     setProcessingStatus("complete");
   };
@@ -136,9 +151,10 @@ const Home = () => {
                 isComplete={processingStatus === "complete"}
                 fileName={
                   uploadedFile
-                    ? `enhanced-${uploadedFile.name}.pdf`
-                    : "enhanced-document.pdf"
+                    ? `ReadEasy-${uploadedFile.name.replace(/\.[^/.]+$/, "")}.pdf`
+                    : "ReadEasy-document.pdf"
                 }
+                hasError={processingStatus === "error"}
               />
             </section>
           )}
