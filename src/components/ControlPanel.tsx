@@ -60,6 +60,23 @@ const ControlPanel = ({
   // Handle bolding option change
   const handleBoldingOptionChange = (value: string) => {
     setBoldingOption(value);
+
+    // Update bolding rules based on selected option
+    if (value === "first-letter") {
+      setBoldingRule(1);
+      onBoldingRuleChange(1);
+    } else if (value === "fixed") {
+      setBoldingRule(2);
+      onBoldingRuleChange(2);
+    } else if (value === "proportional") {
+      // Keep current value or set default
+      if (boldingRule === 1) {
+        setBoldingRule(2);
+        onBoldingRuleChange(2);
+      } else {
+        onBoldingRuleChange(boldingRule);
+      }
+    }
   };
 
   // Handle reset

@@ -24,25 +24,43 @@ const applyBolding = (
 
   const rules = boldingRules || { shortWords: 1, mediumWords: 2, longWords: 3 };
 
-  return text.split(" ").map((word, index) => {
-    let boldLength = rules.shortWords;
+  // Split text into paragraphs first
+  return text.split(".").map((paragraph, paragraphIndex) => {
+    if (!paragraph.trim()) return null;
 
-    if (word.length > 6) {
-      boldLength = rules.longWords;
-    } else if (word.length > 3) {
-      boldLength = rules.mediumWords;
-    }
+    const words = paragraph
+      .trim()
+      .split(" ")
+      .map((word, wordIndex) => {
+        // Skip empty words
+        if (!word.trim()) return null;
 
-    // Ensure we don't try to bold more characters than exist in the word
-    boldLength = Math.min(boldLength, word.length);
+        let boldLength = rules.shortWords;
 
-    const boldPart = word.substring(0, boldLength);
-    const regularPart = word.substring(boldLength);
+        if (word.length > 6) {
+          boldLength = rules.longWords;
+        } else if (word.length > 3) {
+          boldLength = rules.mediumWords;
+        }
+
+        // Ensure we don't try to bold more characters than exist in the word
+        boldLength = Math.min(boldLength, word.length);
+
+        const boldPart = word.substring(0, boldLength);
+        const regularPart = word.substring(boldLength);
+
+        return (
+          <React.Fragment key={`word-${paragraphIndex}-${wordIndex}`}>
+            <span className="font-bold">{boldPart}</span>
+            <span>{regularPart}</span>{" "}
+          </React.Fragment>
+        );
+      });
 
     return (
-      <React.Fragment key={index}>
-        <span className="font-bold">{boldPart}</span>
-        <span>{regularPart}</span>{" "}
+      <React.Fragment key={`paragraph-${paragraphIndex}`}>
+        {words}
+        {paragraphIndex < text.split(".").length - 1 && ". "}
       </React.Fragment>
     );
   });
@@ -56,6 +74,41 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
   lineSpacing = 1.5,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [previewMode, setPreviewMode] = useState<"full" | "excerpt">("excerpt");
+
+  // Extract a meaningful excerpt from the text (first 150-200 characters ending at a period)
+  const getExcerpt = (fullText: string): string => {
+    if (!fullText) return "";
+
+    const minLength = 150;
+    const maxLength = 200;
+
+    // If text is already short enough, return it all
+    if (fullText.length <= maxLength) return fullText;
+
+    // Find a good breaking point (period) between min and max length
+    let cutoff = maxLength;
+    for (let i = minLength; i <= maxLength; i++) {
+      if (i >= fullText.length) {
+        cutoff = fullText.length;
+        break;
+      }
+      if (fullText[i] === ".") {
+        cutoff = i + 1; // Include the period
+        break;
+      }
+    }
+
+    // If no good breaking point found, just use the max length
+    if (cutoff > maxLength) cutoff = maxLength;
+
+    return (
+      fullText.substring(0, cutoff) + (cutoff < fullText.length ? "..." : "")
+    );
+  };
+
+  // Get the text to display based on preview mode
+  const displayText = previewMode === "excerpt" ? getExcerpt(text) : text;
 
   return (
     <Card className="w-full h-full max-w-[800px] max-h-[500px] bg-white border rounded-lg shadow-md overflow-hidden">
@@ -84,7 +137,7 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
               }}
               className="text-justify"
             >
-              {applyBolding(text, boldingRules)}
+              {applyBolding(displayText, boldingRules)}
             </div>
           </ScrollArea>
         ) : (
@@ -110,12 +163,25 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
           )}
         </div>
 
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          {isExpanded ? "Collapse" : "Expand"}
-        </button>
+        <div className="flex gap-4">
+          {text && text.length > 200 && (
+            <button
+              onClick={() =>
+                setPreviewMode(previewMode === "excerpt" ? "full" : "excerpt")
+              }
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              {previewMode === "excerpt" ? "Show Full Text" : "Show Excerpt"}
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            {isExpanded ? "Collapse" : "Expand"}
+          </button>
+        </div>
       </div>
     </Card>
   );

@@ -24,11 +24,66 @@ const Home = () => {
   const [fontSize, setFontSize] = useState<number>(16);
   const [lineSpacing, setLineSpacing] = useState<number>(1.5);
 
+  // Sample text sections to simulate document extraction
+  const sampleTextSections = [
+    "The quick brown fox jumps over the lazy dog. This sentence contains every letter in the English alphabet. It is commonly used for testing fonts and keyboard layouts. The sentence has been used since at least the late 19th century.",
+    "Readability is the ease with which a reader can understand a written text. In natural language, the readability of text depends on its content and its presentation. Researchers have used various factors to measure readability, such as speed of perception, perceptibility at a distance, perceptibility in peripheral vision, visibility, the reflex blink technique, rate of work, eye movements, and fatigue in reading.",
+    "Learning to read is the process of acquiring the skills necessary for reading; that is, the ability to acquire meaning from print. Learning to read is paradoxical in some ways. For an adult who is a fairly good reader, reading seems like a simple, effortless and automatic skill but the process builds on cognitive, linguistic, and social skills developed in the years before reading typically begins.",
+    "Typography is the art and technique of arranging type to make written language legible, readable, and appealing when displayed. The arrangement of type involves selecting typefaces, point sizes, line lengths, line-spacing, and letter-spacing, and adjusting the space between pairs of letters.",
+  ];
+
+  // Function to extract text from file
+  const extractTextFromFile = (file: File): Promise<string> => {
+    // In a real app, this would use PDF.js or a similar library to extract text
+    // For this demo, we'll simulate text extraction with sample text
+    return new Promise((resolve) => {
+      // Simulate processing delay
+      setTimeout(() => {
+        // Use filename to determine which sample text to use
+        const fileName = file.name.toLowerCase();
+        let extractedContent = "";
+
+        if (fileName.includes("typography") || fileName.includes("font")) {
+          extractedContent = sampleTextSections[3]; // Typography text
+        } else if (fileName.includes("read") || fileName.includes("learning")) {
+          extractedContent = sampleTextSections[2]; // Learning to read text
+        } else if (fileName.includes("readability")) {
+          extractedContent = sampleTextSections[1]; // Readability text
+        } else {
+          extractedContent = sampleTextSections[0]; // Default text
+        }
+
+        // Add some random sections to make it longer
+        const additionalSections = [];
+        const numAdditionalSections = Math.floor(Math.random() * 2) + 1; // 1-2 additional sections
+
+        const availableSections = sampleTextSections.filter(
+          (section) => section !== extractedContent,
+        );
+
+        for (
+          let i = 0;
+          i < numAdditionalSections && availableSections.length > 0;
+          i++
+        ) {
+          const randomIndex = Math.floor(
+            Math.random() * availableSections.length,
+          );
+          additionalSections.push(availableSections[randomIndex]);
+          availableSections.splice(randomIndex, 1);
+        }
+
+        resolve([extractedContent, ...additionalSections].join(" "));
+      }, 1500);
+    });
+  };
+
   // Handle file upload
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
     setProcessingStatus("processing");
     setIsProcessing(true);
+    setExtractedText(""); // Clear previous text
 
     // Simulate text extraction with progress
     let progress = 0;
@@ -38,15 +93,21 @@ const Home = () => {
 
       if (progress >= 100) {
         clearInterval(interval);
-        setIsProcessing(false);
-        setProcessingStatus("complete");
 
-        // Simulate extracted text
-        setExtractedText(
-          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl.",
-        );
+        // Extract text from the file
+        extractTextFromFile(file)
+          .then((text) => {
+            setExtractedText(text);
+            setIsProcessing(false);
+            setProcessingStatus("complete");
+          })
+          .catch((error) => {
+            console.error("Error extracting text:", error);
+            setProcessingStatus("error");
+            setIsProcessing(false);
+          });
       }
-    }, 300);
+    }, 200);
   };
 
   // Handle bolding rule change
