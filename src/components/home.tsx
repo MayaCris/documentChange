@@ -5,6 +5,10 @@ import TextPreviewPanel from "./TextPreviewPanel";
 import ControlPanel from "./ControlPanel";
 import ExportPanel from "./ExportPanel";
 import ProcessingIndicator from "./ProcessingIndicator";
+import * as pdfjs from "pdfjs-dist";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
 
 const Home = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);

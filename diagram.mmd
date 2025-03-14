@@ -1,0 +1,46 @@
+graph TD
+    A[User Visits Application] --> B[View Upload Interface]
+    
+    %% Upload Flow
+    B --> C[Upload Document]
+    C --> |Drag & Drop| D[File Processing]
+    C --> |Browse & Select| D
+    D --> E{Valid File Type?}
+    E -->|No| F[Display Error Message]
+    F --> B
+    E -->|Yes| G[Extract Text from Document]
+    G --> H[Apply Bolding Algorithm]
+    
+    %% Preview Flow
+    H --> I[Display Text in Preview Panel]
+    I --> J{User Reviews Preview}
+    
+    %% Adjustment Flow
+    J -->|Wants Adjustments| K[Access Control Panel]
+    K --> L[Adjust Bolding Rules]
+    K --> M[Change Font Size]
+    K --> N[Modify Spacing]
+    L --> O[Update Preview]
+    M --> O
+    N --> O
+    O --> J
+    
+    %% Export Flow
+    J -->|Satisfied| P[Click Export Button]
+    P --> Q[Generate Enhanced PDF]
+    Q --> R[Show Processing Indicator]
+    R --> S[PDF Generation Complete]
+    S --> T[Download Enhanced PDF]
+    T --> U[User Receives File]
+    
+    %% Additional Actions
+    U --> V{User Next Action?}
+    V -->|Process Another Document| B
+    V -->|Exit Application| W[End Session]
+    
+    %% Subgraph for Control Panel Options
+    subgraph "Control Panel Options"
+        L
+        M
+        N
+    end

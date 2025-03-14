@@ -1,5 +1,3 @@
-import React from "react";
-import { cn } from "../lib/utils";
 import { BookOpen } from "lucide-react";
 
 interface HeaderProps {
