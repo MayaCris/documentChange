@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import Header from "./Header";
 import UploadArea from "./UploadArea";
 import TextPreviewPanel from "./TextPreviewPanel";
@@ -6,8 +6,9 @@ import ControlPanel from "./ControlPanel";
 import ExportPanel from "./ExportPanel";
 import ProcessingIndicator from "./ProcessingIndicator";
 import * as pdfjs from "pdfjs-dist";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = '../../node_modules/pdfjs-dist/build/pdf.worker.mjs';
 
 
 const Home = () => {
@@ -18,6 +19,8 @@ const Home = () => {
   const [processingStatus, setProcessingStatus] = useState<
     "idle" | "processing" | "complete" | "error"
   >("idle");
+  const [allParagraphs, setAllParagraphs] = useState<string[]>([]);
+  const [open, setOpen] = useState(false)
 
   // Control panel states
   const [boldingRules, setBoldingRules] = useState({
@@ -28,90 +31,98 @@ const Home = () => {
   const [fontSize, setFontSize] = useState<number>(16);
   const [lineSpacing, setLineSpacing] = useState<number>(1.5);
 
-  // Sample text sections to simulate document extraction
-  const sampleTextSections = [
-    "The quick brown fox jumps over the lazy dog. This sentence contains every letter in the English alphabet. It is commonly used for testing fonts and keyboard layouts. The sentence has been used since at least the late 19th century.",
-    "Readability is the ease with which a reader can understand a written text. In natural language, the readability of text depends on its content and its presentation. Researchers have used various factors to measure readability, such as speed of perception, perceptibility at a distance, perceptibility in peripheral vision, visibility, the reflex blink technique, rate of work, eye movements, and fatigue in reading.",
-    "Learning to read is the process of acquiring the skills necessary for reading; that is, the ability to acquire meaning from print. Learning to read is paradoxical in some ways. For an adult who is a fairly good reader, reading seems like a simple, effortless and automatic skill but the process builds on cognitive, linguistic, and social skills developed in the years before reading typically begins.",
-    "Typography is the art and technique of arranging type to make written language legible, readable, and appealing when displayed. The arrangement of type involves selecting typefaces, point sizes, line lengths, line-spacing, and letter-spacing, and adjusting the space between pairs of letters.",
-  ];
-
   // Function to extract text from file
-  const extractTextFromFile = (file: File): Promise<string> => {
-    // In a real app, this would use PDF.js or a similar library to extract text
-    // For this demo, we'll simulate text extraction with sample text
-    return new Promise((resolve) => {
-      // Simulate processing delay
-      setTimeout(() => {
-        // Use filename to determine which sample text to use
-        const fileName = file.name.toLowerCase();
-        let extractedContent = "";
+  const extractTextFromFile = async (file: File): Promise<string> => {
 
-        if (fileName.includes("typography") || fileName.includes("font")) {
-          extractedContent = sampleTextSections[3]; // Typography text
-        } else if (fileName.includes("read") || fileName.includes("learning")) {
-          extractedContent = sampleTextSections[2]; // Learning to read text
-        } else if (fileName.includes("readability")) {
-          extractedContent = sampleTextSections[1]; // Readability text
-        } else {
-          extractedContent = sampleTextSections[0]; // Default text
+    if (!file) {
+      return Promise.reject("No file selected");
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = async () => {
+        try {
+          setProcessingProgress(30);
+          const typedArray = new Uint8Array(reader.result as ArrayBuffer);
+          const pdf = await pdfjs.getDocument(typedArray).promise;
+          let fullText = "";
+
+          // Extraer texto de todas las páginas
+          setProcessingProgress(50);
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map((item) => item.str).join(" ");
+            fullText += pageText + " ";
+          }
+
+          // Dividir el texto en párrafos usando expresiones regulares
+          // Busca secuencias de texto que terminen en punto seguido de espacio o nueva línea
+          setProcessingProgress(70);
+          const paragraphs = fullText
+            .split(/(?<=\.)\s+/)  // Divide después de un punto seguido de espacios
+            .filter(paragraph => paragraph.trim().length > 80) // Solo párrafos con cierta longitud
+            .map(paragraph => paragraph.trim());
+
+          setAllParagraphs(paragraphs);
+
+          // Seleccionar un número aleatorio de párrafos (entre 3 y 5)
+          setProcessingProgress(85);
+          const numParagraphsToSelect = Math.floor(Math.random() * 3) + 3;
+
+          // Seleccionar un punto de inicio aleatorio para asegurar que los párrafos sean consecutivos
+          let startIndex = 0;
+          if (paragraphs.length > numParagraphsToSelect) {
+            startIndex = Math.floor(Math.random() * (paragraphs.length - numParagraphsToSelect));
+          }
+
+          // Extraer los párrafos consecutivos
+          const selectedParagraphs = paragraphs.slice(startIndex, startIndex + numParagraphsToSelect);
+
+          // Unir los párrafos seleccionados con doble salto de línea para separarlos
+          const result = selectedParagraphs.join("\n\n");
+          setProcessingProgress(100);
+          resolve(result);
+        } catch (error) {
+          console.error("Error processing PDF:", error);
+          reject("Error processing PDF file");
         }
+      };
 
-        // Add some random sections to make it longer
-        const additionalSections = [];
-        const numAdditionalSections = Math.floor(Math.random() * 2) + 1; // 1-2 additional sections
+      reader.onerror = () => {
+        reject("Error reading file");
+      };
 
-        const availableSections = sampleTextSections.filter(
-          (section) => section !== extractedContent,
-        );
-
-        for (
-          let i = 0;
-          i < numAdditionalSections && availableSections.length > 0;
-          i++
-        ) {
-          const randomIndex = Math.floor(
-            Math.random() * availableSections.length,
-          );
-          additionalSections.push(availableSections[randomIndex]);
-          availableSections.splice(randomIndex, 1);
-        }
-
-        resolve([extractedContent, ...additionalSections].join(" "));
-      }, 1500);
+      reader.readAsArrayBuffer(file);
     });
   };
 
-  // Handle file upload
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
     setProcessingStatus("processing");
     setIsProcessing(true);
     setExtractedText(""); // Clear previous text
+    setProcessingProgress(0);
+    setOpen(true);
 
-    // Simulate text extraction with progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setProcessingProgress(progress);
+    // Inicia el proceso de extracción con un pequeño delay para mostrar el progreso visual
+    setTimeout(() => {
+      setProcessingProgress(10);
 
-      if (progress >= 100) {
-        clearInterval(interval);
-
-        // Extract text from the file
-        extractTextFromFile(file)
-          .then((text) => {
-            setExtractedText(text);
-            setIsProcessing(false);
-            setProcessingStatus("complete");
-          })
-          .catch((error) => {
-            console.error("Error extracting text:", error);
-            setProcessingStatus("error");
-            setIsProcessing(false);
-          });
-      }
-    }, 200);
+      extractTextFromFile(file)
+        .then((text) => {
+          setExtractedText(text);
+          setIsProcessing(false);
+          setOpen(false);
+          setProcessingStatus("complete");
+        })
+        .catch((error) => {
+          console.error("Error extracting text:", error);
+          setProcessingStatus("error");
+          setIsProcessing(false);
+          setOpen(false);
+        });
+    }, 300);
   };
 
   // Handle bolding rule change
@@ -123,9 +134,47 @@ const Home = () => {
     });
   };
 
+  // Función para extraer un nuevo párrafo aleatorio del PDF ya procesado
+  const handleGenerateNewText = () => {
+    console.log("allParagraphs", allParagraphs);
+    if (allParagraphs.length === 0) {
+      return;
+    }
+
+    setProcessingStatus("processing");
+    setOpen(true);
+    setIsProcessing(true);
+    setProcessingProgress(0);
+
+    // Simula un procesamiento con actualizaciones de progreso
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 20;
+      setProcessingProgress(progress);
+
+      if (progress >= 100) {
+        clearInterval(interval);
+
+        // Selecciona un párrafo aleatorio o varios consecutivos
+        const numParagraphsToSelect = Math.floor(Math.random() * 3) + 3;
+        let startIndex = Math.floor(Math.random() * (allParagraphs.length - numParagraphsToSelect));
+        if (startIndex < 0) startIndex = 0;
+
+        const selectedParagraphs = allParagraphs.slice(startIndex, startIndex + numParagraphsToSelect);
+        const newText = selectedParagraphs.join("\n\n");
+
+        setExtractedText(newText);
+        setOpen(false);
+        setIsProcessing(false);
+        setProcessingStatus("complete");
+      }
+    }, 100);
+  };
+
   // Handle export
   const handleExport = async () => {
     setProcessingStatus("processing");
+    setOpen(true);
     setIsProcessing(true);
     setProcessingProgress(0);
 
@@ -146,9 +195,11 @@ const Home = () => {
 
     clearInterval(interval);
     setProcessingProgress(100);
+    setOpen(false);
     setIsProcessing(false);
     setProcessingStatus("complete");
   };
+
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -160,7 +211,7 @@ const Home = () => {
           <section className="flex justify-center">
             {!uploadedFile && <UploadArea onFileUpload={handleFileUpload} />}
 
-            {isProcessing && (
+            {/* {isProcessing && (
               <ProcessingIndicator
                 status={processingStatus}
                 progress={processingProgress}
@@ -170,7 +221,42 @@ const Home = () => {
                     : "Processing document..."
                 }
               />
-            )}
+            )} */}
+            <Dialog open={open} onClose={setOpen} className="relative z-10">
+              <DialogBackdrop
+                transition
+                className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+              />
+              <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                  <DialogPanel
+                    transition
+                    className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in sm:my-8 sm:w-full sm:max-w-lg data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+                  >
+                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                      <div className="sm:flex sm:items-start">
+                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                          <DialogTitle as="h3" className="text-base font-semibold text-gray-900">
+                            Processing document...
+                          </DialogTitle>
+                          {isProcessing && (
+                            <ProcessingIndicator
+                              status={processingStatus}
+                              progress={processingProgress}
+                              message={
+                                uploadedFile
+                                  ? `Processing ${uploadedFile.name}...`
+                                  : "Processing document..."
+                              }
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </DialogPanel>
+                </div>
+              </div>
+            </Dialog>
           </section>
 
           {/* Document Preview and Controls Section */}
@@ -183,6 +269,7 @@ const Home = () => {
                   boldingRules={boldingRules}
                   fontSize={fontSize}
                   lineSpacing={lineSpacing}
+                  onGenerateNewText={handleGenerateNewText}
                 />
               </div>
 

@@ -14,6 +14,7 @@ interface TextPreviewPanelProps {
   };
   fontSize?: number;
   lineSpacing?: number;
+  onGenerateNewText?: () => void;
 }
 
 const applyBolding = (
@@ -67,11 +68,12 @@ const applyBolding = (
 };
 
 const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
-  text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl.",
+  text = "Lorem ipsum. ",
   isLoading = false,
   boldingRules = { shortWords: 1, mediumWords: 2, longWords: 3 },
   fontSize = 16,
   lineSpacing = 1.5,
+  onGenerateNewText,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [previewMode, setPreviewMode] = useState<"full" | "excerpt">("excerpt");
@@ -111,7 +113,9 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
   const displayText = previewMode === "excerpt" ? getExcerpt(text) : text;
 
   return (
-    <Card className="w-full h-full max-w-[800px] max-h-[500px] bg-white border rounded-lg shadow-md overflow-hidden">
+    <Card className={`w-full bg-white border rounded-lg shadow-md overflow-hidden ${
+      isExpanded ? 'h-[600px] max-h-[600px]' : 'h-full max-h-[450px]'
+    }`}>
       <div className="p-4 border-b bg-slate-50">
         <h2 className="text-lg font-semibold">Enhanced Text Preview</h2>
         <p className="text-sm text-gray-500">
@@ -129,7 +133,9 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
             <Skeleton className="h-4 w-full" />
           </div>
         ) : text ? (
-          <ScrollArea className="h-[350px] rounded-md border p-4">
+          <ScrollArea className={`rounded-md border p-4 ${
+            isExpanded ? 'h-[450px]' : 'h-[289px]'
+          }`}>
             <div
               style={{
                 fontSize: `${fontSize}px`,
@@ -141,7 +147,9 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
             </div>
           </ScrollArea>
         ) : (
-          <div className="flex items-center justify-center h-[350px] border rounded-md bg-slate-50">
+          <div className={`flex items-center justify-center border rounded-md bg-slate-50 ${
+            isExpanded ? 'h-[450px]' : 'h-[350px]'
+          }`}>
             <p className="text-gray-500 text-center">
               Upload a document to see the enhanced text preview
             </p>
@@ -165,14 +173,22 @@ const TextPreviewPanel: React.FC<TextPreviewPanelProps> = ({
 
         <div className="flex gap-4">
           {text && text.length > 200 && (
-            <button
-              onClick={() =>
-                setPreviewMode(previewMode === "excerpt" ? "full" : "excerpt")
-              }
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              {previewMode === "excerpt" ? "Show Full Text" : "Show Excerpt"}
-            </button>
+            <>
+              <button
+                onClick={onGenerateNewText}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Generate New Text
+              </button>
+              <button
+                onClick={() =>
+                  setPreviewMode(previewMode === "excerpt" ? "full" : "excerpt")
+                }
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {previewMode === "excerpt" ? "Show Full Text" : "Show Excerpt"}
+              </button>
+            </>
           )}
 
           <button

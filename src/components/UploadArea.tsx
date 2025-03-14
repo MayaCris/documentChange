@@ -23,7 +23,6 @@ const UploadArea = ({
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       setError(null);
-
       if (acceptedFiles.length === 0) {
         return;
       }
