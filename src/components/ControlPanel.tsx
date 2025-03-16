@@ -31,61 +31,59 @@ const ControlPanel = ({
   onReset = () => {},
 }: ControlPanelProps) => {
   // Default values for controls
-  const [boldingRule, setBoldingRule] = useState<number>(2);
-  const [fontSize, setFontSize] = useState<number>(16);
-  const [spacing, setSpacing] = useState<number>(1.5);
-  const [boldingOption, setBoldingOption] = useState<string>("proportional");
+  const [tempBoldingRule, setTempBoldingRule] = useState<number>(2);
+  const [tempFontSize, setTempFontSize] = useState<number>(16);
+  const [tempSpacing, setTempSpacing] = useState<number>(1.5);
+  const [tempBoldingOption, setTempBoldingOption] = useState<string>("proportional");
 
-  // Handle bolding rule change
-  const handleBoldingRuleChange = (value: number[]) => {
+  // Handle bolding rule change (temporary)
+  const handleTempBoldingRuleChange = (value: number[]) => {
     const newValue = value[0];
-    setBoldingRule(newValue);
-    onBoldingRuleChange(newValue);
+    setTempBoldingRule(newValue);
   };
 
-  // Handle font size change
-  const handleFontSizeChange = (value: number[]) => {
+  // Handle font size change (temporary)
+  const handleTempFontSizeChange = (value: number[]) => {
     const newValue = value[0];
-    setFontSize(newValue);
-    onFontSizeChange(newValue);
+    setTempFontSize(newValue);
   };
 
-  // Handle spacing change
-  const handleSpacingChange = (value: number[]) => {
+  // Handle spacing change (temporary)
+  const handleTempSpacingChange = (value: number[]) => {
     const newValue = value[0];
-    setSpacing(newValue);
-    onSpacingChange(newValue);
+    setTempSpacing(newValue);
   };
 
-  // Handle bolding option change
-  const handleBoldingOptionChange = (value: string) => {
-    setBoldingOption(value);
+  // Handle bolding option change (temporary)
+  const handleTempBoldingOptionChange = (value: string) => {
+    setTempBoldingOption(value);
 
-    // Update bolding rules based on selected option
+    // Update temporary bolding rules based on selected option
     if (value === "first-letter") {
-      setBoldingRule(1);
-      onBoldingRuleChange(1);
+      setTempBoldingRule(1);
     } else if (value === "fixed") {
-      setBoldingRule(2);
-      onBoldingRuleChange(2);
+      setTempBoldingRule(2);
     } else if (value === "proportional") {
-      // Keep current value or set default
-      if (boldingRule === 1) {
-        setBoldingRule(2);
-        onBoldingRuleChange(2);
-      } else {
-        onBoldingRuleChange(boldingRule);
+      if (tempBoldingRule === 1) {
+        setTempBoldingRule(2);
       }
     }
   };
 
   // Handle reset
   const handleReset = () => {
-    setBoldingRule(2);
-    setFontSize(16);
-    setSpacing(1.5);
-    setBoldingOption("proportional");
+    setTempBoldingRule(2);
+    setTempFontSize(16);
+    setTempSpacing(1.5);
+    setTempBoldingOption("proportional");
     onReset();
+  };
+
+  // Handle apply changes
+  const handleApplyChanges = () => {
+    onBoldingRuleChange(tempBoldingRule);
+    onFontSizeChange(tempFontSize);
+    onSpacingChange(tempSpacing);
   };
 
   return (
@@ -117,8 +115,8 @@ const ControlPanel = ({
                 Bolding Method
               </label>
               <Select
-                value={boldingOption}
-                onValueChange={handleBoldingOptionChange}
+                value={tempBoldingOption}
+                onValueChange={handleTempBoldingOptionChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select bolding method" />
@@ -140,14 +138,14 @@ const ControlPanel = ({
             <div>
               <div className="flex justify-between mb-2">
                 <label className="text-sm text-gray-500">Letters to Bold</label>
-                <span className="text-sm font-medium">{boldingRule}</span>
+                <span className="text-sm font-medium">{tempBoldingRule}</span>
               </div>
               <Slider
-                value={[boldingRule]}
+                value={[tempBoldingRule]}
                 min={1}
                 max={5}
                 step={1}
-                onValueChange={handleBoldingRuleChange}
+                onValueChange={handleTempBoldingRuleChange}
               />
               <div className="flex justify-between mt-1">
                 <span className="text-xs text-gray-400">Min (1)</span>
@@ -166,14 +164,14 @@ const ControlPanel = ({
           <div>
             <div className="flex justify-between mb-2">
               <label className="text-sm text-gray-500">Size (px)</label>
-              <span className="text-sm font-medium">{fontSize}px</span>
+              <span className="text-sm font-medium">{tempFontSize}px</span>
             </div>
             <Slider
-              value={[fontSize]}
+              value={[tempFontSize]}
               min={12}
               max={24}
               step={1}
-              onValueChange={handleFontSizeChange}
+              onValueChange={handleTempFontSizeChange}
             />
             <div className="flex justify-between mt-1">
               <span className="text-xs text-gray-400">Small (12px)</span>
@@ -191,14 +189,14 @@ const ControlPanel = ({
           <div>
             <div className="flex justify-between mb-2">
               <label className="text-sm text-gray-500">Line Height</label>
-              <span className="text-sm font-medium">{spacing.toFixed(1)}</span>
+              <span className="text-sm font-medium">{tempSpacing.toFixed(1)}</span>
             </div>
             <Slider
-              value={[spacing]}
+              value={[tempSpacing]}
               min={1}
               max={3}
               step={0.1}
-              onValueChange={handleSpacingChange}
+              onValueChange={handleTempSpacingChange}
             />
             <div className="flex justify-between mt-1">
               <span className="text-xs text-gray-400">Tight (1.0)</span>
@@ -210,11 +208,7 @@ const ControlPanel = ({
         {/* Apply Button */}
         <Button
           className="w-full"
-          onClick={() => {
-            onBoldingRuleChange(boldingRule);
-            onFontSizeChange(fontSize);
-            onSpacingChange(spacing);
-          }}
+          onClick={handleApplyChanges}
         >
           Apply Changes
         </Button>

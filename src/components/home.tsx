@@ -5,11 +5,24 @@ import TextPreviewPanel from "./TextPreviewPanel";
 import ControlPanel from "./ControlPanel";
 import ExportPanel from "./ExportPanel";
 import ProcessingIndicator from "./ProcessingIndicator";
-import * as pdfjs from "pdfjs-dist";
+import { PDFDocument, StandardFonts, rgb, PDFName, PDFDict } from 'pdf-lib';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react'
+import * as pdfjs from 'pdfjs-dist';
 
+// Set worker path to use local worker file
 pdfjs.GlobalWorkerOptions.workerSrc = '../../node_modules/pdfjs-dist/build/pdf.worker.mjs';
 
+interface TextContent {
+  items: Array<{ str: string }>;
+}
+
+// Function to clean text while preserving accents and special characters
+const cleanText = (text: string): string => {
+  // Keep letters (including accented), numbers, basic punctuation
+  return text.replace(/[^\p{L}\p{N}\s.,!?¡¿;:'"()-]/gu, '')
+    .replace(/[\u0300-\u036f]/g, c => c) // Preserve combining diacritical marks
+    .trim();
+};
 
 const Home = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -33,28 +46,25 @@ const Home = () => {
 
   // Function to extract text from file
   const extractTextFromFile = async (file: File): Promise<string> => {
-
     if (!file) {
       return Promise.reject("No file selected");
     }
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
 
-      reader.onload = async () => {
-        try {
-          setProcessingProgress(30);
-          const typedArray = new Uint8Array(reader.result as ArrayBuffer);
-          const pdf = await pdfjs.getDocument(typedArray).promise;
-          let fullText = "";
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument(arrayBuffer).promise;
+      setProcessingProgress(30);
 
-          // Extraer texto de todas las páginas
-          setProcessingProgress(50);
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item) => item.str).join(" ");
-            fullText += pageText + " ";
-          }
+      let fullText = "";
+      
+      // Extract text from each page
+      setProcessingProgress(50);
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent() as TextContent;
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += pageText + " ";
+      }
 
           // Dividir el texto en párrafos usando expresiones regulares
           // Busca secuencias de texto que terminen en punto seguido de espacio o nueva línea
@@ -64,37 +74,26 @@ const Home = () => {
             .filter(paragraph => paragraph.trim().length > 80) // Solo párrafos con cierta longitud
             .map(paragraph => paragraph.trim());
 
-          setAllParagraphs(paragraphs);
+      setAllParagraphs(paragraphs);
 
-          // Seleccionar un número aleatorio de párrafos (entre 3 y 5)
-          setProcessingProgress(85);
-          const numParagraphsToSelect = Math.floor(Math.random() * 3) + 3;
+      // Select random consecutive paragraphs
+      setProcessingProgress(85);
+      const numParagraphsToSelect = Math.floor(Math.random() * 3) + 3; // 3-5 paragraphs
 
-          // Seleccionar un punto de inicio aleatorio para asegurar que los párrafos sean consecutivos
-          let startIndex = 0;
-          if (paragraphs.length > numParagraphsToSelect) {
-            startIndex = Math.floor(Math.random() * (paragraphs.length - numParagraphsToSelect));
-          }
+      let startIndex = 0;
+      if (paragraphs.length > numParagraphsToSelect) {
+        startIndex = Math.floor(Math.random() * (paragraphs.length - numParagraphsToSelect));
+      }
 
-          // Extraer los párrafos consecutivos
-          const selectedParagraphs = paragraphs.slice(startIndex, startIndex + numParagraphsToSelect);
-
-          // Unir los párrafos seleccionados con doble salto de línea para separarlos
-          const result = selectedParagraphs.join("\n\n");
-          setProcessingProgress(100);
-          resolve(result);
-        } catch (error) {
-          console.error("Error processing PDF:", error);
-          reject("Error processing PDF file");
-        }
-      };
-
-      reader.onerror = () => {
-        reject("Error reading file");
-      };
-
-      reader.readAsArrayBuffer(file);
-    });
+      const selectedParagraphs = paragraphs.slice(startIndex, startIndex + numParagraphsToSelect);
+      const result = selectedParagraphs.join("\n\n");
+      
+      setProcessingProgress(100);
+      return result;
+    } catch (error) {
+      console.error("Error processing PDF:", error);
+      return Promise.reject("Error processing PDF file");
+    }
   };
 
   const handleFileUpload = (file: File) => {
@@ -136,7 +135,6 @@ const Home = () => {
 
   // Función para extraer un nuevo párrafo aleatorio del PDF ya procesado
   const handleGenerateNewText = () => {
-    console.log("allParagraphs", allParagraphs);
     if (allParagraphs.length === 0) {
       return;
     }
@@ -178,26 +176,134 @@ const Home = () => {
     setIsProcessing(true);
     setProcessingProgress(0);
 
-    // Simulate export process with progress updates
-    const interval = setInterval(() => {
-      setProcessingProgress((prev) => {
-        const newProgress = prev + 10;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          return 100;
+    try {
+      if (!uploadedFile) {
+        throw new Error("No file uploaded");
+      }
+
+      // Create two separate array buffers from the file
+      const fileBlob = new Blob([uploadedFile]);
+      const pdfJsArrayBuffer = await fileBlob.arrayBuffer();
+      const pdfLibArrayBuffer = await fileBlob.arrayBuffer();
+
+      // Load the PDF with pdf-lib for modification
+      const pdfDoc = await PDFDocument.load(pdfLibArrayBuffer);
+      
+      // Embed the fonts we'll use
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      
+      setProcessingProgress(20);
+
+      // Process each paragraph
+      let currentPage = pdfDoc.addPage([612, 792]); // US Letter size
+      let { width, height } = currentPage.getSize();
+      let yOffset = height - 50;
+      let xOffset = 50;
+
+      for (const paragraph of allParagraphs) {
+        const words = paragraph.split(/\s+/).filter(word => word.trim());
+        
+        for (const word of words) {
+          // Clean the word while preserving accents
+          const cleanWord = cleanText(word);
+          if (!cleanWord) continue;
+
+          // Determine bold length based on word length
+          let boldLength = boldingRules.shortWords;
+          if (cleanWord.length > 6) {
+            boldLength = boldingRules.longWords;
+          } else if (cleanWord.length > 3) {
+            boldLength = boldingRules.mediumWords;
+          }
+          boldLength = Math.min(boldLength, cleanWord.length);
+
+          const boldPart = cleanWord.substring(0, boldLength);
+          const regularPart = cleanWord.substring(boldLength);
+
+          // Calculate word widths
+          const boldWidth = helveticaBoldFont.widthOfTextAtSize(boldPart, fontSize);
+          const regularWidth = helveticaFont.widthOfTextAtSize(regularPart + ' ', fontSize);
+          const totalWidth = boldWidth + regularWidth;
+
+          // Check if we need to start a new line
+          if (xOffset + totalWidth > width - 50) {
+            xOffset = 50;
+            yOffset -= fontSize * lineSpacing;
+
+            // Check if we need a new page
+            if (yOffset < 50) {
+              currentPage = pdfDoc.addPage([width, height]);
+              yOffset = height - 50;
+              xOffset = 50;
+            }
+          }
+
+          // Draw bold part
+          currentPage.drawText(boldPart, {
+            x: xOffset,
+            y: yOffset,
+            size: fontSize,
+            font: helveticaBoldFont,
+            color: rgb(0, 0, 0),
+          });
+
+          // Draw regular part
+          currentPage.drawText(regularPart + ' ', {
+            x: xOffset + boldWidth,
+            y: yOffset,
+            size: fontSize,
+            font: helveticaFont,
+            color: rgb(0, 0, 0),
+          });
+
+          xOffset += totalWidth;
         }
-        return newProgress;
-      });
-    }, 200);
 
-    // Simulate processing time
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Move to next paragraph
+        yOffset -= fontSize * lineSpacing * 1.5;
+        xOffset = 50;
 
-    clearInterval(interval);
-    setProcessingProgress(100);
-    setOpen(false);
-    setIsProcessing(false);
-    setProcessingStatus("complete");
+        // Check if we need a new page for the next paragraph
+        if (yOffset < 50) {
+          currentPage = pdfDoc.addPage([width, height]);
+          yOffset = height - 50;
+          xOffset = 50;
+        }
+
+        setProcessingProgress(20 + (allParagraphs.indexOf(paragraph) / allParagraphs.length) * 60);
+      }
+
+      setProcessingProgress(80);
+
+      // Save the PDF
+      const pdfBytes = await pdfDoc.save();
+      
+      setProcessingProgress(90);
+
+      // Create and trigger download
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = uploadedFile 
+        ? `ReadEasy-${uploadedFile.name.replace(/\.[^/.]+$/, "")}.pdf`
+        : "ReadEasy-document.pdf";
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setProcessingProgress(100);
+      setProcessingStatus("complete");
+    } catch (error) {
+      console.error('Error during export:', error);
+      setProcessingStatus("error");
+    } finally {
+      setIsProcessing(false);
+      setOpen(false);
+    }
   };
 
 
@@ -298,15 +404,15 @@ const Home = () => {
             <section className="flex justify-center mt-8">
               <ExportPanel
                 onExport={handleExport}
-                isProcessing={isProcessing && processingStatus === "processing"}
+                isProcessing={isProcessing}
                 progress={processingProgress}
                 isComplete={processingStatus === "complete"}
+                hasError={processingStatus === "error"}
                 fileName={
                   uploadedFile
                     ? `ReadEasy-${uploadedFile.name.replace(/\.[^/.]+$/, "")}.pdf`
                     : "ReadEasy-document.pdf"
                 }
-                hasError={processingStatus === "error"}
               />
             </section>
           )}
